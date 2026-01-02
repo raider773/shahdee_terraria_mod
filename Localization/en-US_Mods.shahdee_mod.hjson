@@ -1,14 +1,14 @@
 Buffs: {
 	buff: {
-		DisplayName: "Shahdee"
-		Description: "Shahdee stands with you, as always" 
+		DisplayName: Shahdee
+		Description: Shahdee stands with you, as always
 	}
 }
 
 Items: {
 	summon_staff: {
-		DisplayName: "Staff of Shahdee"
-		Tooltip: "A catalyst that manifests Shahdee in this world"
+		DisplayName: Sword of Shahdee
+		Tooltip: A catalyst that manifests Shahdee in this world
 	}
 }
 
