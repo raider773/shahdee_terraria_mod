@@ -1,0 +1,15 @@
+Buffs: {
+	buff: {
+		DisplayName: buff
+		Description: Mods.shahdee_mod.Buffs.buff.Description
+	}
+}
+
+Items: {
+	summon_staff: {
+		DisplayName: summon_staff
+		Tooltip: ""
+	}
+}
+
+Projectiles.minion.DisplayName: minion
