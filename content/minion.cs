@@ -32,12 +32,12 @@ namespace shahdee_mod.content
 		public sealed override void SetDefaults() {
 			Projectile.width = 18;
 			Projectile.height = 28;
-			Projectile.tileCollide = false; // Makes the minion go through tiles freely
+			Projectile.tileCollide = true; // Makes the minion go through tiles freely
 
 			// These below are needed for a minion weapon
 			Projectile.friendly = true; // Only controls if it deals damage to enemies on contact (more on that later)
 			Projectile.minion = true; // Declares this as a minion (has many effects)
-			Projectile.DamageType = DamageClass.Summon; // Declares the damage type (needed for it to deal damage)
+			Projectile.DamageType = DamageClass.Melee; // Declares the damage type (needed for it to deal damage)
 			Projectile.minionSlots = 1f; // Amount of slots this minion occupies from the total minion slots available to the player (more on that later)
 			Projectile.penetrate = -1; // Needed so the minion doesn't despawn on collision with enemies or tiles
 		}
@@ -83,11 +83,11 @@ namespace shahdee_mod.content
 
 		private void GeneralBehavior(Player owner, out Vector2 vectorToIdlePosition, out float distanceToIdlePosition) {
 			Vector2 idlePosition = owner.Center;
-			idlePosition.Y -= 48f; // Go up 48 coordinates (three tiles from the center of the player)
+			idlePosition.Y -= 0f; // Go up 48 coordinates (three tiles from the center of the player)
 
 			// If your minion doesn't aimlessly move around when it's idle, you need to "put" it into the line of other summoned minions
 			// The index is projectile.minionPos
-			float minionPositionOffsetX = (10 + Projectile.minionPos * 40) * -owner.direction;
+			float minionPositionOffsetX = (6 + Projectile.minionPos * 30) * -owner.direction;
 			idlePosition.X += minionPositionOffsetX; // Go behind the player
 
 			// All of this code below this line is adapted from Spazmamini code (ID 388, aiStyle 66)
