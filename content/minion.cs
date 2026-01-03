@@ -4,6 +4,7 @@ using Terraria;
 using Terraria.DataStructures;
 using Terraria.ID;
 using Terraria.ModLoader;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace shahdee_mod.content
 {
@@ -58,6 +59,36 @@ namespace shahdee_mod.content
 			Projectile.usesLocalNPCImmunity = true;
 			Projectile.localNPCHitCooldown = 300;
 		}
+
+		public override bool PreDraw(ref Color lightColor)
+			{
+				// Get the texture
+				Texture2D texture = ModContent.Request<Texture2D>(Texture).Value;
+
+				// Calculate the sprite's position on screen
+				Vector2 drawPosition = Projectile.Center - Main.screenPosition;
+
+				// Shift it up so it sits on the ground correctly
+				drawPosition.Y += -10; // tweak this number until it looks correct
+
+				// Determine the frame to draw
+				Rectangle frame = texture.Frame(1, Main.projFrames[Projectile.type], 0, Projectile.frame);
+
+				// Draw the sprite
+				Main.spriteBatch.Draw(
+					texture,
+					drawPosition,
+					frame,
+					lightColor,
+					Projectile.rotation,
+					frame.Size() / 2,  // origin is center of frame
+					1f,                // scale
+					Projectile.spriteDirection == 1 ? SpriteEffects.None : SpriteEffects.FlipHorizontally,
+					0f
+				);
+
+				return false; // skip default drawing
+			}
 
 
 		public override void OnHitNPC(NPC target, NPC.HitInfo hit, int damageDone) {
@@ -215,8 +246,8 @@ namespace shahdee_mod.content
 		private void Movement(bool foundTarget, float distanceFromTarget, Vector2 targetCenter, float distanceToIdlePosition, Vector2 vectorToIdlePosition) {
 				float walkSpeed = 4f;
 				float acceleration = 0.15f;
-				float normalJump = -6f;
-				float highJump = -6f;
+				float normalJump = -8f;
+				float highJump = -8f;
 
 				// gravity
 				Projectile.velocity.Y += 0.4f;
