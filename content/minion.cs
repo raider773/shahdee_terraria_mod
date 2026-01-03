@@ -17,9 +17,22 @@ namespace shahdee_mod.content
 		public override string Texture =>
             "shahdee_mod/assets/minion";
 
+
+
+
+		private enum AnimState {
+				Idle,
+				Walk,
+				Jump,
+				Attack
+			}
+
+			private AnimState animState;
+
+
 		public override void SetStaticDefaults() {
 			// Sets the amount of frames this minion has on its spritesheet
-			Main.projFrames[Type] = 4;
+			Main.projFrames[Type] = 16;
 			// This is necessary for right-click targeting
 			ProjectileID.Sets.MinionTargettingFeature[Type] = true;
 
@@ -41,6 +54,7 @@ namespace shahdee_mod.content
 			Projectile.minionSlots = 1f; // Amount of slots this minion occupies from the total minion slots available to the player (more on that later)
 			Projectile.penetrate = -1; // Needed so the minion doesn't despawn on collision with enemies or tiles
 
+			// Minion-specific local NPC immunity. Important!
 			Projectile.usesLocalNPCImmunity = true;
 			Projectile.localNPCHitCooldown = 300;
 		}
@@ -53,7 +67,7 @@ namespace shahdee_mod.content
 				pushDir.Normalize();
 				Projectile.velocity += pushDir * 3f;
 			}
-}
+		}
 
 		// Here you can decide if your minion breaks things like grass or pots
 		public override bool? CanCutTiles() {
@@ -67,17 +81,28 @@ namespace shahdee_mod.content
 
 		// The AI of this minion is split into multiple methods to avoid bloat. This method just passes values between calls actual parts of the AI.
 		public override void AI() {
-			Player owner = Main.player[Projectile.owner];
+				Player owner = Main.player[Projectile.owner];
 
-			if (!CheckActive(owner)) {
-				return;
+				if (!CheckActive(owner))
+					return;
+
+				GeneralBehavior(owner, out Vector2 vectorToIdlePosition, out float distanceToIdlePosition);
+				SearchForTargets(owner, out bool foundTarget, out float distanceFromTarget, out Vector2 targetCenter);
+				Movement(foundTarget, distanceFromTarget, targetCenter, distanceToIdlePosition, vectorToIdlePosition);
+
+				// === ANIMATION STATE DECISION ===
+				if (foundTarget && distanceFromTarget < 60f)
+					animState = AnimState.Attack;
+				else if (Projectile.velocity.Y != 0f)
+					animState = AnimState.Jump;
+				else if (Math.Abs(Projectile.velocity.X) > 0.2f)
+					animState = AnimState.Walk;
+				else
+					animState = AnimState.Idle;
+
+				Visuals();
 			}
 
-			GeneralBehavior(owner, out Vector2 vectorToIdlePosition, out float distanceToIdlePosition);
-			SearchForTargets(owner, out bool foundTarget, out float distanceFromTarget, out Vector2 targetCenter);
-			Movement(foundTarget, distanceFromTarget, targetCenter, distanceToIdlePosition, vectorToIdlePosition);
-			Visuals();
-		}
 
 		// This is the "active check", makes sure the minion is alive while the player is alive, and despawns if not
 		private bool CheckActive(Player owner) {
@@ -187,104 +212,147 @@ namespace shahdee_mod.content
 			Projectile.friendly = foundTarget;
 		}
 
-		private void Movement(
-	bool foundTarget,
-	float distanceFromTarget,
-	Vector2 targetCenter,
-	float distanceToIdlePosition,
-	Vector2 vectorToIdlePosition
-) {
-	float walkSpeed = 4f;
-	float acceleration = 0.15f;
-	float normalJump = -6f;
-	float highJump = -10f;
+		private void Movement(bool foundTarget, float distanceFromTarget, Vector2 targetCenter, float distanceToIdlePosition, Vector2 vectorToIdlePosition) {
+				float walkSpeed = 4f;
+				float acceleration = 0.15f;
+				float normalJump = -6f;
+				float highJump = -6f;
 
-	// gravity
-	Projectile.velocity.Y += 0.4f;
-	if (Projectile.velocity.Y > 10f)
-		Projectile.velocity.Y = 10f;
+				// gravity
+				Projectile.velocity.Y += 0.4f;
+				if (Projectile.velocity.Y > 10f)
+					Projectile.velocity.Y = 10f;
 
-	// slope / step handling (MANDATORY)
-	Collision.StepUp(
-		ref Projectile.position,
-		ref Projectile.velocity,
-		Projectile.width,
-		Projectile.height,
-		ref Projectile.stepSpeed,
-		ref Projectile.gfxOffY
-	);
+				// slope / step handling (MANDATORY)
+				Collision.StepUp(
+					ref Projectile.position,
+					ref Projectile.velocity,
+					Projectile.width,
+					Projectile.height,
+					ref Projectile.stepSpeed,
+					ref Projectile.gfxOffY
+				);
 
-	bool onGround = Projectile.velocity.Y == 0f;
+				bool onGround = false;
 
-	// === ATTACK ===
-	if (foundTarget && distanceFromTarget < 120f) {
-		float dirX = Math.Sign(targetCenter.X - Projectile.Center.X);
+				int tileXLeft = (int)(Projectile.position.X / 16f);
+				int tileXRight = (int)((Projectile.position.X + Projectile.width) / 16f);
+				int tileY = (int)((Projectile.position.Y + Projectile.height + 1) / 16f);
 
-		Projectile.velocity.X = MathHelper.Lerp(
-			Projectile.velocity.X,
-			dirX * walkSpeed,
-			acceleration
-		);
+				for (int x = tileXLeft; x <= tileXRight; x++)
+				{
+					Tile tile = Main.tile[x, tileY];
+					if (tile != null && tile.HasTile)
+					{
+						bool solidBlock = Main.tileSolid[tile.TileType];
+						bool platform = Main.tileSolidTop[tile.TileType] && tile.TileFrameY == 0;
 
-		if (onGround && targetCenter.Y < Projectile.Center.Y - 16f) {
-			Projectile.velocity.Y = normalJump;
-		}
+						if (solidBlock || platform)
+						{
+							onGround = true;
+							break;
+						}
+					}
+				}
+
+				// === ATTACK ===
+				if (foundTarget && distanceFromTarget < 120f) {
+					float dirX = Math.Sign(targetCenter.X - Projectile.Center.X);
+
+					Projectile.velocity.X = MathHelper.Lerp(
+						Projectile.velocity.X,
+						dirX * walkSpeed,
+						acceleration
+					);
+
+					if (onGround && targetCenter.Y < Projectile.Center.Y - 16f) {
+						Projectile.velocity.Y = normalJump;
+					}
+				}
+				// === FOLLOW PLAYER ===
+				else {
+					// horizontal follow
+					if (distanceToIdlePosition > 20f) {
+						float dirX = Math.Sign(vectorToIdlePosition.X);
+
+						Projectile.velocity.X = MathHelper.Lerp(
+							Projectile.velocity.X,
+							dirX * (walkSpeed * 0.8f),
+							acceleration
+						);
+					}
+					else {
+						Projectile.velocity.X *= 0.8f;
+						if (Math.Abs(Projectile.velocity.X) < 0.05f)
+							Projectile.velocity.X = 0f;
+					}
+
+					// jump higher if player is above
+					if (onGround && vectorToIdlePosition.Y < -24f) {
+						Projectile.velocity.Y = highJump;
+					}
+
+					// emergency teleport if completely failed to follow
+					if (distanceToIdlePosition > 600f) {
+						Projectile.Center = Main.player[Projectile.owner].Center;
+						Projectile.velocity = Vector2.Zero;
+						Projectile.netUpdate = true;
+					}
+				}
+			}
+
+		private void Visuals() {
+	// Face direction
+	if (Projectile.velocity.X != 0f)
+		Projectile.spriteDirection = Projectile.velocity.X > 0 ? 1 : -1;
+
+	Projectile.rotation = 0f;
+
+	int frameSpeed;
+	int frameStart;
+	int frameCount;
+
+	switch (animState) {
+		case AnimState.Idle:
+			frameStart = 0;
+			frameCount = 4;
+			frameSpeed = 14;
+			break;
+
+		case AnimState.Walk:
+			frameStart = 4;
+			frameCount = 6;
+			frameSpeed = 6;
+			break;
+
+		case AnimState.Jump:
+			frameStart = 10;
+			frameCount = 2;
+			frameSpeed = 10;
+			break;
+
+		case AnimState.Attack:
+			frameStart = 12;
+			frameCount = 4;
+			frameSpeed = 4;
+			break;
+
+		default:
+			return;
 	}
-	// === FOLLOW PLAYER ===
-	else {
-		// horizontal follow
-		if (distanceToIdlePosition > 20f) {
-			float dirX = Math.Sign(vectorToIdlePosition.X);
 
-			Projectile.velocity.X = MathHelper.Lerp(
-				Projectile.velocity.X,
-				dirX * (walkSpeed * 0.8f),
-				acceleration
-			);
-		}
-		else {
-			Projectile.velocity.X *= 0.8f;
-			if (Math.Abs(Projectile.velocity.X) < 0.05f)
-				Projectile.velocity.X = 0f;
-		}
+	Projectile.frameCounter++;
 
-		// jump higher if player is above
-		if (onGround && vectorToIdlePosition.Y < -24f) {
-			Projectile.velocity.Y = highJump;
-		}
+	if (Projectile.frameCounter >= frameSpeed) {
+		Projectile.frameCounter = 0;
+		Projectile.frame++;
 
-		// emergency teleport if completely failed to follow
-		if (distanceToIdlePosition > 600f) {
-			Projectile.Center = Main.player[Projectile.owner].Center;
-			Projectile.velocity = Vector2.Zero;
-			Projectile.netUpdate = true;
+		if (Projectile.frame < frameStart ||
+		    Projectile.frame >= frameStart + frameCount) {
+			Projectile.frame = frameStart;
 		}
 	}
 }
 
-
-
-
-		private void Visuals() {
-			// So it will lean slightly towards the direction it's moving
-			Projectile.rotation = Projectile.velocity.X * 0.05f;
-
-			// This is a simple "loop through all frames from top to bottom" animation
-			int frameSpeed = 5;
-
-			Projectile.frameCounter++;
-
-			if (Projectile.frameCounter >= frameSpeed) {
-				Projectile.frameCounter = 0;
-				Projectile.frame++;
-
-				if (Projectile.frame >= Main.projFrames[Type]) {
-					Projectile.frame = 0;
-				}
-			}
-
-			// Some visuals here
-			Lighting.AddLight(Projectile.Center, Color.White.ToVector3() * 0.78f);
-		}
 	}
 }
