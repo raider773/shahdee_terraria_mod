@@ -250,9 +250,9 @@ namespace shahdee_mod.content
 				float highJump = -8f;
 
 				// gravity
-				Projectile.velocity.Y += 0.4f;
-				if (Projectile.velocity.Y > 10f)
-					Projectile.velocity.Y = 10f;
+				Projectile.velocity.Y += 0.3f;
+				if (Projectile.velocity.Y > 8f)
+					Projectile.velocity.Y = 8f;
 
 				// slope / step handling (MANDATORY)
 				Collision.StepUp(
@@ -319,7 +319,7 @@ namespace shahdee_mod.content
 					}
 
 					// jump higher if player is above
-					if (onGround && vectorToIdlePosition.Y < -24f) {
+					if (onGround && vectorToIdlePosition.Y < -120f) {
 						Projectile.velocity.Y = highJump;
 					}
 
