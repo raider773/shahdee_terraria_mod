@@ -40,7 +40,20 @@ namespace shahdee_mod.content
 			Projectile.DamageType = DamageClass.Melee; // Declares the damage type (needed for it to deal damage)
 			Projectile.minionSlots = 1f; // Amount of slots this minion occupies from the total minion slots available to the player (more on that later)
 			Projectile.penetrate = -1; // Needed so the minion doesn't despawn on collision with enemies or tiles
+
+			Projectile.usesLocalNPCImmunity = true;
+			Projectile.localNPCHitCooldown = 300;
 		}
+
+
+		public override void OnHitNPC(NPC target, NPC.HitInfo hit, int damageDone) {
+			// Push minion away from enemy after hit
+			Vector2 pushDir = Projectile.Center - target.Center;
+			if (pushDir.LengthSquared() > 0f) {
+				pushDir.Normalize();
+				Projectile.velocity += pushDir * 3f;
+			}
+}
 
 		// Here you can decide if your minion breaks things like grass or pots
 		public override bool? CanCutTiles() {
@@ -129,7 +142,7 @@ namespace shahdee_mod.content
 
 		private void SearchForTargets(Player owner, out bool foundTarget, out float distanceFromTarget, out Vector2 targetCenter) {
 			// Starting search distance
-			distanceFromTarget = 700f;
+			distanceFromTarget = 120f;
 			targetCenter = Projectile.position;
 			foundTarget = false;
 
@@ -139,7 +152,7 @@ namespace shahdee_mod.content
 				float between = Vector2.Distance(npc.Center, Projectile.Center);
 
 				// Reasonable distance away so it doesn't target across multiple screens
-				if (between < 2000f) {
+				if (between < 130f) {
 					distanceFromTarget = between;
 					targetCenter = npc.Center;
 					foundTarget = true;
@@ -174,50 +187,83 @@ namespace shahdee_mod.content
 			Projectile.friendly = foundTarget;
 		}
 
-		private void Movement(bool foundTarget, float distanceFromTarget, Vector2 targetCenter, float distanceToIdlePosition, Vector2 vectorToIdlePosition) {
-			// Default movement parameters (here for attacking)
-			float speed = 8f;
-			float inertia = 20f;
+		private void Movement(
+	bool foundTarget,
+	float distanceFromTarget,
+	Vector2 targetCenter,
+	float distanceToIdlePosition,
+	Vector2 vectorToIdlePosition
+) {
+	float walkSpeed = 4f;
+	float acceleration = 0.15f;
+	float normalJump = -6f;
+	float highJump = -10f;
 
-			if (foundTarget) {
-				// Minion has a target: attack (here, fly towards the enemy)
-				if (distanceFromTarget > 40f) {
-					// The immediate range around the target (so it doesn't latch onto it when close)
-					Vector2 direction = targetCenter - Projectile.Center;
-					direction.Normalize();
-					direction *= speed;
+	// gravity
+	Projectile.velocity.Y += 0.4f;
+	if (Projectile.velocity.Y > 10f)
+		Projectile.velocity.Y = 10f;
 
-					Projectile.velocity = (Projectile.velocity * (inertia - 1) + direction) / inertia;
-				}
-			}
-			else {
-				// Minion doesn't have a target: return to player and idle
-				if (distanceToIdlePosition > 600f) {
-					// Speed up the minion if it's away from the player
-					speed = 12f;
-					inertia = 60f;
-				}
-				else {
-					// Slow down the minion if closer to the player
-					speed = 4f;
-					inertia = 80f;
-				}
+	// slope / step handling (MANDATORY)
+	Collision.StepUp(
+		ref Projectile.position,
+		ref Projectile.velocity,
+		Projectile.width,
+		Projectile.height,
+		ref Projectile.stepSpeed,
+		ref Projectile.gfxOffY
+	);
 
-				if (distanceToIdlePosition > 20f) {
-					// The immediate range around the player (when it passively floats about)
+	bool onGround = Projectile.velocity.Y == 0f;
 
-					// This is a simple movement formula using the two parameters and its desired direction to create a "homing" movement
-					vectorToIdlePosition.Normalize();
-					vectorToIdlePosition *= speed;
-					Projectile.velocity = (Projectile.velocity * (inertia - 1) + vectorToIdlePosition) / inertia;
-				}
-				else if (Projectile.velocity == Vector2.Zero) {
-					// If there is a case where it's not moving at all, give it a little "poke"
-					Projectile.velocity.X = -0.15f;
-					Projectile.velocity.Y = -0.05f;
-				}
-			}
+	// === ATTACK ===
+	if (foundTarget && distanceFromTarget < 120f) {
+		float dirX = Math.Sign(targetCenter.X - Projectile.Center.X);
+
+		Projectile.velocity.X = MathHelper.Lerp(
+			Projectile.velocity.X,
+			dirX * walkSpeed,
+			acceleration
+		);
+
+		if (onGround && targetCenter.Y < Projectile.Center.Y - 16f) {
+			Projectile.velocity.Y = normalJump;
 		}
+	}
+	// === FOLLOW PLAYER ===
+	else {
+		// horizontal follow
+		if (distanceToIdlePosition > 20f) {
+			float dirX = Math.Sign(vectorToIdlePosition.X);
+
+			Projectile.velocity.X = MathHelper.Lerp(
+				Projectile.velocity.X,
+				dirX * (walkSpeed * 0.8f),
+				acceleration
+			);
+		}
+		else {
+			Projectile.velocity.X *= 0.8f;
+			if (Math.Abs(Projectile.velocity.X) < 0.05f)
+				Projectile.velocity.X = 0f;
+		}
+
+		// jump higher if player is above
+		if (onGround && vectorToIdlePosition.Y < -24f) {
+			Projectile.velocity.Y = highJump;
+		}
+
+		// emergency teleport if completely failed to follow
+		if (distanceToIdlePosition > 600f) {
+			Projectile.Center = Main.player[Projectile.owner].Center;
+			Projectile.velocity = Vector2.Zero;
+			Projectile.netUpdate = true;
+		}
+	}
+}
+
+
+
 
 		private void Visuals() {
 			// So it will lean slightly towards the direction it's moving

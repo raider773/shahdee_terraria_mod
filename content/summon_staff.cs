@@ -22,7 +22,7 @@ namespace shahdee_mod.content
 		}
 
 		public override void SetDefaults() {
-			Item.damage = 6;
+			Item.damage = 5;
 			Item.knockBack = 1f;
 			Item.mana = 0; // mana cost
 			Item.width = 32;
