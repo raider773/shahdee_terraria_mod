@@ -24,8 +24,7 @@ namespace shahdee_mod.content
 		private enum AnimState {
 				Idle,
 				Walk,
-				Jump,
-				Attack
+				Jump
 			}
 
 			private AnimState animState;
@@ -55,9 +54,6 @@ namespace shahdee_mod.content
 			Projectile.minionSlots = 1f; // Amount of slots this minion occupies from the total minion slots available to the player (more on that later)
 			Projectile.penetrate = -1; // Needed so the minion doesn't despawn on collision with enemies or tiles
 
-			// Minion-specific local NPC immunity. Important!
-			Projectile.usesLocalNPCImmunity = true;
-			Projectile.localNPCHitCooldown = 300;
 		}
 
 		public override bool PreDraw(ref Color lightColor)
@@ -88,17 +84,7 @@ namespace shahdee_mod.content
 				);
 
 				return false; // skip default drawing
-			}
-
-
-		public override void OnHitNPC(NPC target, NPC.HitInfo hit, int damageDone) {
-			// Push minion away from enemy after hit
-			Vector2 pushDir = Projectile.Center - target.Center;
-			if (pushDir.LengthSquared() > 0f) {
-				pushDir.Normalize();
-				Projectile.velocity += pushDir * 3f;
-			}
-		}
+			}		
 
 		// Here you can decide if your minion breaks things like grass or pots
 		public override bool? CanCutTiles() {
@@ -107,7 +93,7 @@ namespace shahdee_mod.content
 
 		// This is mandatory if your minion deals contact damage (further related stuff in AI() in the Movement region)
 		public override bool MinionContactDamage() {
-			return true;
+			return false;
 		}
 
 		// The AI of this minion is split into multiple methods to avoid bloat. This method just passes values between calls actual parts of the AI.
@@ -118,13 +104,14 @@ namespace shahdee_mod.content
 					return;
 
 				GeneralBehavior(owner, out Vector2 vectorToIdlePosition, out float distanceToIdlePosition);
-				SearchForTargets(owner, out bool foundTarget, out float distanceFromTarget, out Vector2 targetCenter);
+				bool foundTarget = false;
+				float distanceFromTarget = 0f;
+				Vector2 targetCenter = Vector2.Zero;
+
 				Movement(foundTarget, distanceFromTarget, targetCenter, distanceToIdlePosition, vectorToIdlePosition);
 
 				// === ANIMATION STATE DECISION ===
-				if (foundTarget && distanceFromTarget < 60f)
-					animState = AnimState.Attack;
-				else if (Projectile.velocity.Y != 0f)
+				if (Projectile.velocity.Y != 0f)
 					animState = AnimState.Jump;
 				else if (Math.Abs(Projectile.velocity.X) > 0.2f)
 					animState = AnimState.Walk;
@@ -240,7 +227,7 @@ namespace shahdee_mod.content
 			// friendly needs to be set to false so it doesn't damage things like target dummies while idling
 			// Both things depend on if it has a target or not, so it's just one assignment here
 			// You don't need this assignment if your minion is shooting things instead of dealing contact damage
-			Projectile.friendly = foundTarget;
+			Projectile.friendly = false;
 		}
 
 		private void Movement(bool foundTarget, float distanceFromTarget, Vector2 targetCenter, float distanceToIdlePosition, Vector2 vectorToIdlePosition) {
@@ -319,7 +306,19 @@ namespace shahdee_mod.content
 					}
 
 					// jump higher if player is above
-					if (onGround && vectorToIdlePosition.Y < -120f) {
+					Player owner = Main.player[Projectile.owner];
+
+					// jump if player is above AND either:
+					// - player is jumping/falling
+					// - OR we are blocked by terrain
+					if (
+						onGround &&
+						vectorToIdlePosition.Y < -32f && // only 2 tiles now
+						(
+							owner.velocity.Y != 0f || // player jumped
+							Math.Abs(vectorToIdlePosition.X) < 40f // stuck under player
+						)
+					) {
 						Projectile.velocity.Y = highJump;
 					}
 
@@ -360,13 +359,7 @@ namespace shahdee_mod.content
 			frameStart = 10;
 			frameCount = 2;
 			frameSpeed = 10;
-			break;
-
-		case AnimState.Attack:
-			frameStart = 12;
-			frameCount = 4;
-			frameSpeed = 4;
-			break;
+			break;		
 
 		default:
 			return;
