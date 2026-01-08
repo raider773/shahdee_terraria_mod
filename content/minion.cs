@@ -28,6 +28,7 @@ namespace shahdee_mod.content
 			}
 
 			private AnimState animState;
+	private AnimState previousAnimState;
 
 
 		public override void SetStaticDefaults() {
@@ -98,6 +99,7 @@ namespace shahdee_mod.content
 
 		// The AI of this minion is split into multiple methods to avoid bloat. This method just passes values between calls actual parts of the AI.
 		public override void AI() {
+								previousAnimState = animState;
 				Player owner = Main.player[Projectile.owner];
 
 				if (!CheckActive(owner))
@@ -111,12 +113,30 @@ namespace shahdee_mod.content
 				Movement(foundTarget, distanceFromTarget, targetCenter, distanceToIdlePosition, vectorToIdlePosition);
 
 				// === ANIMATION STATE DECISION ===
-				if (Projectile.velocity.Y != 0f)
-					animState = AnimState.Jump;
-				else if (Math.Abs(Projectile.velocity.X) > 0.2f)
-					animState = AnimState.Walk;
-				else
-					animState = AnimState.Idle;
+				bool onGround = false;
+				int tileXLeft = (int)(Projectile.position.X / 16f);
+				int tileXRight = (int)((Projectile.position.X + Projectile.width) / 16f);
+				int tileY = (int)((Projectile.position.Y + Projectile.height + 1) / 16f);
+				for (int x = tileXLeft; x <= tileXRight; x++) {
+					Tile tile = Main.tile[x, tileY];
+					if (tile != null && tile.HasTile) {
+						bool solidBlock = Main.tileSolid[tile.TileType];
+						bool platform = Main.tileSolidTop[tile.TileType] && tile.TileFrameY == 0;
+						if (solidBlock || platform) {
+							onGround = true;
+							break;
+						}
+					}
+				}
+
+								if (!onGround) {
+									animState = AnimState.Jump;
+								} else if (Math.Abs(Projectile.velocity.X) < 0.2f) {
+									animState = AnimState.Idle;
+									Projectile.velocity.X = 0f;
+								} else {
+									animState = AnimState.Walk;
+								}
 
 				Visuals();
 			}
@@ -345,24 +365,30 @@ namespace shahdee_mod.content
 	switch (animState) {
 		case AnimState.Idle:
 			frameStart = 0;
-			frameCount = 4;
-			frameSpeed = 14;
+			frameCount = 0;
+			frameSpeed = 10;
 			break;
 
 		case AnimState.Walk:
-			frameStart = 4;
-			frameCount = 6;
-			frameSpeed = 6;
+			frameStart = 0;
+			frameCount = 15;
+			frameSpeed = 20;
 			break;
 
 		case AnimState.Jump:
-			frameStart = 10;
-			frameCount = 2;
+			frameStart = 5;
+			frameCount = 0;
 			frameSpeed = 10;
-			break;		
+			break;        
 
 		default:
 			return;
+	}
+
+	// Reset frame if animation state changed
+	if (animState != previousAnimState) {
+		Projectile.frame = frameStart;
+		Projectile.frameCounter = 0;
 	}
 
 	Projectile.frameCounter++;
@@ -372,7 +398,7 @@ namespace shahdee_mod.content
 		Projectile.frame++;
 
 		if (Projectile.frame < frameStart ||
-		    Projectile.frame >= frameStart + frameCount) {
+			Projectile.frame >= frameStart + frameCount) {
 			Projectile.frame = frameStart;
 		}
 	}
