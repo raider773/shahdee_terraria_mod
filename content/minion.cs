@@ -33,7 +33,7 @@ namespace shahdee_mod.content
 
 		public override void SetStaticDefaults() {
 			// Sets the amount of frames this minion has on its spritesheet
-			Main.projFrames[Type] = 16;
+			Main.projFrames[Type] = 14;
 			// This is necessary for right-click targeting
 			ProjectileID.Sets.MinionTargettingFeature[Type] = true;
 
@@ -251,7 +251,7 @@ namespace shahdee_mod.content
 		}
 
 		private void Movement(bool foundTarget, float distanceFromTarget, Vector2 targetCenter, float distanceToIdlePosition, Vector2 vectorToIdlePosition) {
-				float walkSpeed = 4f;
+				float walkSpeed = 5f;
 				float acceleration = 0.15f;
 				float normalJump = -8f;
 				float highJump = -8f;
@@ -310,7 +310,7 @@ namespace shahdee_mod.content
 				// === FOLLOW PLAYER ===
 				else {
 					// horizontal follow
-					if (distanceToIdlePosition > 20f) {
+					if (distanceToIdlePosition > 50f) {
 						float dirX = Math.Sign(vectorToIdlePosition.X);
 
 						Projectile.velocity.X = MathHelper.Lerp(
@@ -364,20 +364,20 @@ namespace shahdee_mod.content
 
 	switch (animState) {
 		case AnimState.Idle:
-			frameStart = 0;
-			frameCount = 0;
+			frameStart = 8;
+			frameCount = 5;
 			frameSpeed = 10;
 			break;
 
 		case AnimState.Walk:
-			frameStart = 0;
-			frameCount = 15;
+			frameStart = 8;
+			frameCount = 5;
 			frameSpeed = 20;
 			break;
 
 		case AnimState.Jump:
-			frameStart = 5;
-			frameCount = 0;
+			frameStart = 8;
+			frameCount = 5;
 			frameSpeed = 10;
 			break;        
 
