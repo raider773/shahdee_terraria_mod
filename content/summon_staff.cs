@@ -18,7 +18,7 @@ namespace shahdee_mod.content
 			ItemID.Sets.GamepadWholeScreenUseRange[Type] = true; // This lets the player target anywhere on the whole screen while using a controller
 			ItemID.Sets.LockOnIgnoresCollision[Type] = true;
 
-			ItemID.Sets.StaffMinionSlotsRequired[Type] = 1f; // The default value is 1, but other values are supported. See the docs for more guidance. 
+			ItemID.Sets.StaffMinionSlotsRequired[Type] = 0f; // The default value is 1, but other values are supported. See the docs for more guidance. 
 		}
 
 		public override void SetDefaults() {
@@ -53,6 +53,15 @@ namespace shahdee_mod.content
 			player.AddBuff(Item.buffType, 2);
 
 			return true; // The minion projectile will be spawned by the game since we return true.
+			
+		}
+
+		public override void AddRecipes()
+		{
+			Recipe recipe = CreateRecipe();
+			recipe.AddIngredient(ItemID.Wood, 1); // Example ingredient		
+			recipe.AddTile(TileID.WorkBenches); // Example crafting station
+			recipe.Register();
 		}
 	}
 }
