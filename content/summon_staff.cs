@@ -11,7 +11,7 @@ namespace shahdee_mod.content
 	{
 
 		public override string Texture =>
-            "shahdee_mod/assets/summon_staff";
+            "shahdee_mod/assets/summon_sword";
 
 			
 		public override void SetStaticDefaults() {
