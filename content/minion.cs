@@ -364,20 +364,20 @@ namespace shahdee_mod.content
 
 	switch (animState) {
 		case AnimState.Idle:
-			frameStart = 8;
-			frameCount = 5;
+			frameStart = 0;
+			frameCount = 1;
 			frameSpeed = 10;
 			break;
 
 		case AnimState.Walk:
-			frameStart = 8;
-			frameCount = 5;
-			frameSpeed = 20;
+			frameStart = 2;
+			frameCount = 12;
+			frameSpeed = 4;
 			break;
 
 		case AnimState.Jump:
-			frameStart = 8;
-			frameCount = 5;
+			frameStart = 1;
+			frameCount = 1;
 			frameSpeed = 10;
 			break;        
 
